@@ -108,4 +108,4 @@ class PaginatorViewsTest(TestCase):
             response.context.get('page_obj')
         return response
 # По контекстам index, post_detail, group_posts и profile так и не смог понять,
-# Как это можно сделать. 
+# Как это можно сделать.
