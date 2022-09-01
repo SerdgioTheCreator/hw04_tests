@@ -114,3 +114,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 
 SORT_PAGES = 10
+
+TEST_SORT_PAGES = 13

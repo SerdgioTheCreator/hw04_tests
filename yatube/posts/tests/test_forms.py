@@ -1,6 +1,8 @@
 import shutil
 import tempfile
 
+from http import HTTPStatus
+
 from posts.forms import PostForm
 from posts.models import Group, Post
 
@@ -19,7 +21,6 @@ class PostFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='auth')
         cls.author = User.objects.create_user(username='post_author')
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -39,61 +40,62 @@ class PostFormTests(TestCase):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
-        self.guest_client = Client()
-        self.user = User.objects.create_user(username='HasNoName')
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
         self.post_author = Client()
         self.post_author.force_login(self.author)
-        self.group = PostFormTests.group
-        self.post = PostFormTests.post
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
         posts_count = Post.objects.count()
+        form_data = {
+            'text': self.post.text,
+            'group': self.group.id,
+        }
+        # reverse('posts:post_create') нужно вынести в сеттинги? #
         response = self.post_author.post(
             reverse('posts:post_create'),
-            data={'text': 'Тестовый пост', 'group': self.group.id},
+            data=form_data,
             follow=True
         )
         self.assertRedirects(response, reverse(
             'posts:profile',
-            kwargs={'username': self.post.author}
+            args=(self.post.author,)
         ))
         self.assertEqual(Post.objects.count(), posts_count + 1)
-        self.assertTrue(
-            Post.objects.filter(
-                text='Тестовый пост',
-                group=self.group.id
-            ).exists()
-        )
+        post = Post.objects.first()
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.author, self.author)
+        self.assertEqual(post.group.id, form_data['group'])
 
     def test_edit_post(self):
-        posts_count = Post.objects.count()
-        post = Post.objects.create(
-            author=self.user,
-            text='text',
-            group=self.group
-        )
-
         new_post_text = 'new text'
         new_group = Group.objects.create(
             title='New test group',
             slug='new-test-slug',
             description='new description',
         )
+        form_data = {
+            'text': new_post_text,
+            'group': new_group.id,
+        }
 
-        self.authorized_client.post(
-            reverse('posts:post_edit', kwargs={'post_id': post.id}),
-            data={'text': new_post_text, 'group': new_group.id},
+        self.post_author.post(
+            reverse('posts:post_edit', args=(self.post.id,)),
+            data=form_data,
             follow=True,
         )
 
-        self.assertEqual(Post.objects.count(), posts_count + 1)
         post = Post.objects.first()
-        self.assertEqual(post.text, new_post_text)
-        self.assertEqual(post.author, self.user)
-        self.assertEqual(post.group, new_group)
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.author, self.author)
+        self.assertEqual(post.group.id, form_data['group'])
+
+    def test_old_group(self):
+        posts_count = Post.objects.count()
+        response = self.post_author.get(reverse(
+            'posts:group_list', args=(PostFormTests.group.slug,)))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(len(response.context['page_obj']), 1)
+        self.assertEqual(Post.objects.count(), posts_count)
 
     def test_title_label(self):
         title_label = PostFormTests.form.fields['text'].label
@@ -102,3 +104,7 @@ class PostFormTests(TestCase):
     def test_title_help_text(self):
         title_help_text = PostFormTests.form.fields['text'].help_text
         self.assertEqual(title_help_text, 'Текст нового поста')
+
+    def test_not_authorized_cant_create_post(self):
+        response = self.client.get(reverse('posts:post_create'))
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
