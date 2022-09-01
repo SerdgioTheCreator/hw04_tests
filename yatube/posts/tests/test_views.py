@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.shortcuts import render
 from django.test import Client, TestCase
 from django.urls import reverse
 from django import forms
