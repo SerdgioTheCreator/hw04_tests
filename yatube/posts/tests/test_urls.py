@@ -116,6 +116,8 @@ class PostURLTests(TestCase):
         """Гость не может создавать и редачить пост"""
         for name, args, url in self.hardcode_url_names:
             with self.subTest(args=args):
+                login = reverse('users:login')
+                reverse_name = reverse('posts:post_create')
                 if name == 'posts:post_edit':
                     response = self.client.get(reverse(
                         'posts:post_edit',
@@ -130,7 +132,7 @@ class PostURLTests(TestCase):
                         'posts:post_create'),
                         follow=True)
                     self.assertRedirects(
-                        response, '/auth/login/?next=/create/')
+                        response, f'{login}?next={reverse_name}')
                 else:
                     response = self.authorized_user.get(reverse(
                         name,

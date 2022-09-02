@@ -1,19 +1,21 @@
 import shutil
 import tempfile
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
 from http import HTTPStatus
 
 from posts.forms import PostForm
 from posts.models import Group, Post
 
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.test import Client, TestCase, override_settings
-from django.urls import reverse
 
 User = get_user_model()
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+
+reverse_name = reverse('posts:post_create')
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -45,14 +47,15 @@ class PostFormTests(TestCase):
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
+        posts = Post.objects.all()
+        posts.delete()
         posts_count = Post.objects.count()
         form_data = {
             'text': self.post.text,
             'group': self.group.id,
         }
-        # reverse('posts:post_create') нужно вынести в сеттинги? #
         response = self.post_author.post(
-            reverse('posts:post_create'),
+            reverse_name,
             data=form_data,
             follow=True
         )
@@ -77,8 +80,7 @@ class PostFormTests(TestCase):
             'text': new_post_text,
             'group': new_group.id,
         }
-
-        self.post_author.post(
+        response = self.post_author.post(
             reverse('posts:post_edit', args=(self.post.id,)),
             data=form_data,
             follow=True,
@@ -86,15 +88,13 @@ class PostFormTests(TestCase):
 
         post = Post.objects.first()
         self.assertEqual(post.text, form_data['text'])
-        self.assertEqual(post.author, self.author)
+        self.assertEqual(post.author, self.post.author)
         self.assertEqual(post.group.id, form_data['group'])
-
-    def test_old_group(self):
         posts_count = Post.objects.count()
         response = self.post_author.get(reverse(
-            'posts:group_list', args=(PostFormTests.group.slug,)))
+            'posts:group_list', args=(PostFormTests.group.slug, )))
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(len(response.context['page_obj']), 1)
+        self.assertEqual(len(response.context['page_obj']), 0)
         self.assertEqual(Post.objects.count(), posts_count)
 
     def test_title_label(self):
@@ -106,5 +106,7 @@ class PostFormTests(TestCase):
         self.assertEqual(title_help_text, 'Текст нового поста')
 
     def test_not_authorized_cant_create_post(self):
-        response = self.client.get(reverse('posts:post_create'))
-        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+        posts_count = Post.objects.count()
+        response = self.client.get(reverse_name)
+        self.assertRedirects(response, '/auth/login/?next=/create/')
+        self.assertEqual(Post.objects.count(), posts_count)

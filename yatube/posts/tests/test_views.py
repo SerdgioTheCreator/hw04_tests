@@ -36,20 +36,78 @@ class PostViewsTests(TestCase):
             reverse('posts:post_create'),
             reverse('posts:post_edit', args=(self.post.id, )),
         )
+        form_fields = {
+            'text': forms.fields.CharField,
+            'group': forms.fields.ChoiceField,
+        }
         for reverse_name in name_args:
             with self.subTest(reverse_name=reverse_name):
                 response = self.post_author.get(reverse_name)
                 self.assertIn('form', response.context)
                 self.assertIsInstance(response.context['form'], PostForm)
 
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.fields.ChoiceField,
-        }
-        for value, expected in form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context.get('form').fields.get(value)
-                self.assertIsInstance(form_field, expected)
+                for value, expected in form_fields.items():
+                    with self.subTest(value=value):
+                        form_field = response.context.get('form').fields.get(
+                            value)
+                        self.assertIsInstance(form_field, expected)
+
+    def func(self, response, boll=False):
+        if boll is True:
+            post = response.context.get('post')
+        else:
+            post = response.context.get('page_obj')[0]
+        self.assertEqual(post.author, self.author)
+        self.assertEqual(post.group, self.post.group)
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.pub_date, self.post.pub_date)
+
+    def test_index_context(self):
+        response = self.post_author.get(reverse('posts:index'))
+        self.func(response)
+
+    def test_group_posts_context(self):
+        response = self.post_author.get(reverse(
+            'posts:group_list',
+            args=(self.group.slug)))
+        self.func(response)
+        self.assertEqual(response.context.get('group'), self.post.group)
+
+    def test_profile_context(self):
+        response = self.post_author.get(
+            'posts:profile',
+            args=(self.post.author))
+        self.func(response)
+        self.assertEqual(response.context.get('author'), self.post.author)
+
+    def test_post_detail_context(self):
+        response = self.post_author.get(reverse(
+            'posts:post_detail',
+            args=(self.post.id)))
+        self.func(response, boll=True)
+
+    def test_post_is_not_in_another_group(self):
+        posts = Post.objects.all()
+        posts.delete()
+        new_post = Post.objects.create(
+            author=self.author,
+            text='test_text',
+            group=PostViewsTests.group
+        )
+        new_group = Group.objects.create(
+            title='Test_group',
+            slug='test-slug1',
+            description='test_description'
+        )
+        response = self.post_author.get(reverse(
+            'posts:group_list',
+            args=(new_group.id)))
+        self.assertEqual(len(response.context['page_obj']), 0)
+        self.assertIn(PostViewsTests.group, new_post)
+        response = self.post_author.get(reverse(
+            'posts:group_list',
+            args=(PostViewsTests.group)))
+        self.assertIn(new_post, response)
 
 
 class PaginatorViewsTest(TestCase):
@@ -91,20 +149,11 @@ class PaginatorViewsTest(TestCase):
             with self.subTest(reverse_name=reverse_name):
                 response = self.authorized_client.get(reverse_name)
 
-        for page, posts_count in page_posts_count:
-            with self.subTest(page=page):
-                response = self.authorized_client.get(reverse_name + page)
-                self.assertEqual(
-                    len(response.context['page_obj']),
-                    posts_count
-                )
-
-# Не понимаю, как правильно написать эту функцию и как ей пользоваться #
-    def func(self, response, boll=False):
-        if boll is True:
-            response.context.get('post')
-        else:
-            response.context.get('page_obj')
-        return response
-# По контекстам index, post_detail, group_posts и profile так и не смог понять,
-# Как это можно сделать.
+                for page, posts_count in page_posts_count:
+                    with self.subTest(page=page):
+                        response = self.authorized_client.get(
+                            reverse_name + page)
+                        self.assertEqual(
+                            len(response.context['page_obj']),
+                            posts_count
+                        )
