@@ -119,7 +119,10 @@ class PostURLTests(TestCase):
             with self.subTest(name=name):
                 login = reverse('users:login')
                 reverse_name = reverse(name, args=args)
-                if name == 'posts:post_create' or name == 'posts:post_edit':
+                if name in (
+                    'posts:post_create',
+                    'posts:post_edit',
+                ):
                     response = self.client.get(reverse(
                         name,
                         args=args,

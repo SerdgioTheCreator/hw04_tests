@@ -144,3 +144,7 @@ dmypy.json
 .history/
 
 .mypy_cache
+
+# My ignored files
+
+media/

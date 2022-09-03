@@ -36,6 +36,11 @@ class Post(models.Model):
         related_name='posts',
         verbose_name='Группа',
     )
+    image = models.ImageField(
+        verbose_name='Картинка',
+        upload_to='posts/',
+        blank=True
+    )
 
     class Meta:
         verbose_name = 'пост'
@@ -44,3 +49,23 @@ class Post(models.Model):
 
     def __str__(self):
         return self.text[:15]
+
+
+class Comment(models.Model):
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Комментарий'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Автор комментария',
+    )
+    text = models.TextField(verbose_name='Текст комментария')
+    created = models.DateTimeField(
+        verbose_name='Дата публикации комментария',
+        auto_now_add=True,
+    )

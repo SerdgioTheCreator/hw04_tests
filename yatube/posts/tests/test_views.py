@@ -85,21 +85,21 @@ class PostViewsTests(TestCase):
 
     def test_post_is_not_in_another_group(self):
         Post.objects.all().delete()
-        self.new_post = Post.objects.create(
+        new_post = Post.objects.create(
             author=self.author,
             text='test_text',
             group=PostViewsTests.group
         )
-        self.new_group = Group.objects.create(
+        new_group = Group.objects.create(
             title='Test_group',
             slug='test-slug1',
             description='test_description'
         )
         response = self.post_author.get(reverse(
             'posts:group_list',
-            args=(self.new_group.slug, )))
+            args=(new_group.slug, )))
         self.assertEqual(len(response.context.get('page_obj')), 0)
-        self.assertEqual(self.new_post.group, PostViewsTests.group)
+        self.assertEqual(new_post.group, PostViewsTests.group)
         response = self.post_author.get(reverse(
             'posts:group_list',
             args=(self.group.slug, )))

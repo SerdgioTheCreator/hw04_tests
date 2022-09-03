@@ -22,9 +22,9 @@
               <div class="card-body">
                 {% include 'includes/errors.html' %}
                 {% if form.instance.pk %}       
-                  <form method="post" action="{% url 'posts:post_edit' form.instance.pk %}">
+                  <form method="post" enctype="multipart/form-data" action="{% url 'posts:post_edit' form.instance.pk %}">
                 {% else %}
-                  <form method="post" action="{% url 'posts:post_create' %}">
+                  <form method="post" enctype="multipart/form-data" action="{% url 'posts:post_create' %}">
                 {% endif %}
                   {% include 'includes/form_cycle.html' %}
                     {% csrf_token %}
