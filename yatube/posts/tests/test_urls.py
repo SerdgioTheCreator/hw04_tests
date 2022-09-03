@@ -1,4 +1,3 @@
-from lib2to3.pgen2.token import NOTEQUAL
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
