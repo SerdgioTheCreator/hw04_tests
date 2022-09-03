@@ -11,7 +11,6 @@ class PostViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='auth')
         cls.author = User.objects.create_user(username='post_author')
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -25,8 +24,6 @@ class PostViewsTests(TestCase):
         )
 
     def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
         self.post_author = Client()
         self.post_author.force_login(self.author)
 
@@ -57,10 +54,10 @@ class PostViewsTests(TestCase):
             post = response.context.get('post')
         else:
             post = response.context.get('page_obj')[0]
-        self.assertEqual(post.author, self.author)
-        self.assertEqual(post.group, self.post.group)
-        self.assertEqual(post.text, self.post.text)
-        self.assertEqual(post.pub_date, self.post.pub_date)
+        self.assertEqual(post.author, PostViewsTests.post.author)
+        self.assertEqual(post.group, PostViewsTests.post.group)
+        self.assertEqual(post.text, PostViewsTests.post.text)
+        self.assertEqual(post.pub_date, PostViewsTests.post.pub_date)
 
     def test_index_context(self):
         response = self.post_author.get(reverse('posts:index'))
@@ -69,52 +66,51 @@ class PostViewsTests(TestCase):
     def test_group_posts_context(self):
         response = self.post_author.get(reverse(
             'posts:group_list',
-            args=(self.group.slug)))
+            args=(self.group.slug, )))
         self.func(response)
         self.assertEqual(response.context.get('group'), self.post.group)
 
     def test_profile_context(self):
-        response = self.post_author.get(
+        response = self.post_author.get(reverse(
             'posts:profile',
-            args=(self.post.author))
+            args=(self.author, )))
         self.func(response)
-        self.assertEqual(response.context.get('author'), self.post.author)
+        self.assertEqual(response.context.get('author'), self.author)
 
     def test_post_detail_context(self):
         response = self.post_author.get(reverse(
             'posts:post_detail',
-            args=(self.post.id)))
+            args=(self.post.id, )))
         self.func(response, boll=True)
 
     def test_post_is_not_in_another_group(self):
-        posts = Post.objects.all()
-        posts.delete()
-        new_post = Post.objects.create(
+        self.posts = Post.objects.all()
+        self.posts.delete()
+        self.new_post = Post.objects.create(
             author=self.author,
             text='test_text',
             group=PostViewsTests.group
         )
-        new_group = Group.objects.create(
+        self.new_group = Group.objects.create(
             title='Test_group',
             slug='test-slug1',
             description='test_description'
         )
         response = self.post_author.get(reverse(
             'posts:group_list',
-            args=(new_group.id)))
-        self.assertEqual(len(response.context['page_obj']), 0)
-        self.assertIn(PostViewsTests.group, new_post)
+            args=(self.new_group.slug, )))
+        self.assertEqual(len(response.context.get('page_obj')), 0)
+        self.assertEqual(self.new_post.group, PostViewsTests.group)
         response = self.post_author.get(reverse(
             'posts:group_list',
-            args=(PostViewsTests.group)))
-        self.assertIn(new_post, response)
+            args=(self.group.slug, )))
+        self.assertEqual(len(response.context.get('page_obj')), 1)
 
 
 class PaginatorViewsTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='auth')
         cls.author = User.objects.create_user(username='post_author')
         cls.group = Group.objects.create(
             title='Тестовая группа',
@@ -154,6 +150,6 @@ class PaginatorViewsTest(TestCase):
                         response = self.authorized_client.get(
                             reverse_name + page)
                         self.assertEqual(
-                            len(response.context['page_obj']),
+                            len(response.context.get('page_obj')),
                             posts_count
                         )
