@@ -54,10 +54,10 @@ class PostViewsTests(TestCase):
             post = response.context.get('post')
         else:
             post = response.context.get('page_obj')[0]
-        self.assertEqual(post.author, PostViewsTests.post.author)
-        self.assertEqual(post.group, PostViewsTests.post.group)
-        self.assertEqual(post.text, PostViewsTests.post.text)
-        self.assertEqual(post.pub_date, PostViewsTests.post.pub_date)
+        self.assertEqual(post.author, self.post.author)
+        self.assertEqual(post.group, self.post.group)
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.pub_date, self.post.pub_date)
 
     def test_index_context(self):
         response = self.post_author.get(reverse('posts:index'))
@@ -68,7 +68,7 @@ class PostViewsTests(TestCase):
             'posts:group_list',
             args=(self.group.slug, )))
         self.func(response)
-        self.assertEqual(response.context.get('group'), self.post.group)
+        self.assertEqual(response.context.get('group'), self.group)
 
     def test_profile_context(self):
         response = self.post_author.get(reverse(
@@ -84,8 +84,7 @@ class PostViewsTests(TestCase):
         self.func(response, boll=True)
 
     def test_post_is_not_in_another_group(self):
-        self.posts = Post.objects.all()
-        self.posts.delete()
+        Post.objects.all().delete()
         self.new_post = Post.objects.create(
             author=self.author,
             text='test_text',

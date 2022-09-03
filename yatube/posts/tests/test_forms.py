@@ -1,3 +1,4 @@
+from http import HTTPStatus
 import shutil
 import tempfile
 
@@ -5,7 +6,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from http import HTTPStatus
 
 from posts.forms import PostForm
 from posts.models import Group, Post
@@ -15,7 +15,7 @@ User = get_user_model()
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
-reverse_name = reverse('posts:post_create')
+REVERSE_NAME = reverse('posts:post_create')
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -47,15 +47,14 @@ class PostFormTests(TestCase):
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
-        posts = Post.objects.all()
-        posts.delete()
+        Post.objects.all().delete()
         posts_count = Post.objects.count()
         form_data = {
             'text': self.post.text,
             'group': self.group.id,
         }
         response = self.post_author.post(
-            reverse_name,
+            REVERSE_NAME,
             data=form_data,
             follow=True
         )
@@ -107,6 +106,6 @@ class PostFormTests(TestCase):
 
     def test_not_authorized_cant_create_post(self):
         posts_count = Post.objects.count()
-        response = self.client.get(reverse_name)
+        response = self.client.get(REVERSE_NAME)
         self.assertRedirects(response, '/auth/login/?next=/create/')
         self.assertEqual(Post.objects.count(), posts_count)

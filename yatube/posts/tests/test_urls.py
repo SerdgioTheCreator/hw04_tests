@@ -1,3 +1,4 @@
+from lib2to3.pgen2.token import NOTEQUAL
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -28,6 +29,7 @@ class PostURLTests(TestCase):
 
     def setUp(self):
         self.authorized_user = Client()
+        self.authorized_user.force_login(self.user)
         self.post_author = Client()
         self.post_author.force_login(self.author)
         self.hardcode_url_names = (
@@ -82,13 +84,13 @@ class PostURLTests(TestCase):
     def test_reverse_name_urls(self):
         """Тест реверсов"""
         for name, args, url in self.hardcode_url_names:
-            with self.subTest(args=args):
+            with self.subTest(name=name):
                 self.assertEqual(reverse(name, args=args), url)
 
     def test_post_author_get_404(self):
         """Автор получит 404 на всех страницах"""
         for name, args, url in self.hardcode_url_names:
-            with self.subTest(args=args):
+            with self.subTest(name=name):
                 if self.user == self.post.author:
                     response = self.post_author.get(reverse(name, args=args))
                     self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -96,7 +98,7 @@ class PostURLTests(TestCase):
     def test_authorized_client_get_302(self):
         """Авторизованный пользователь не может редачить пост"""
         for name, args, url in self.hardcode_url_names:
-            with self.subTest(args=args):
+            with self.subTest(name=name):
                 if name == 'posts:post_edit':
                     response = self.authorized_user.get(reverse(
                         'posts:post_edit',
@@ -115,22 +117,14 @@ class PostURLTests(TestCase):
     def test_guest_client_cant_create_edit_post(self):
         """Гость не может создавать и редачить пост"""
         for name, args, url in self.hardcode_url_names:
-            with self.subTest(args=args):
+            with self.subTest(name=name):
                 login = reverse('users:login')
-                reverse_name = reverse('posts:post_create')
-                if name == 'posts:post_edit':
+                reverse_name = reverse(name, args=args)
+                if name == 'posts:post_create' or name == 'posts:post_edit':
                     response = self.client.get(reverse(
-                        'posts:post_edit',
-                        args=(self.post.id, ),
+                        name,
+                        args=args,
                     ), follow=True)
-                    self.assertRedirects(
-                        response, (reverse(
-                            'posts:post_detail',
-                            args=(self.post.id, ))))
-                elif name == 'posts:post_create':
-                    response = self.client.get(reverse(
-                        'posts:post_create'),
-                        follow=True)
                     self.assertRedirects(
                         response, f'{login}?next={reverse_name}')
                 else:
