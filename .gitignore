@@ -148,3 +148,5 @@ dmypy.json
 # My ignored files
 
 media/
+
+static/
