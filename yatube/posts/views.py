@@ -1,8 +1,9 @@
+from webbrowser import get
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 
 from .forms import CommentForm, PostForm
-from .models import Comment, Group, Post, User
+from .models import Comment, Follow, Group, Post, User
 from .utils import paginate_page
 
 
@@ -31,10 +32,14 @@ def profile(request, username):
     post_list = author.posts.select_related('group')
     page_obj = paginate_page(request, post_list)
     posts_count = post_list.count()
+    following = Follow.objects.filter(
+        author=author.id, user=request.user.id
+    ).exists()
     context = {
         'page_obj': page_obj,
         'posts_count': posts_count,
         'author': author,
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
@@ -89,3 +94,28 @@ def add_comment(request, post_id):
         comment.save()
         return redirect('posts:post_detail', post_id=post_id)
     return render(request, 'posts/includes/add_comment.html', {'form': form})
+
+
+@login_required
+def follow_index(request):
+    post_list = Post.objects.filter(author__following__user=request.user)
+    page_obj = paginate_page(request, post_list)
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'posts/follow.html', context)
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    following = request.user.follower.filter(author=author).exists()
+    if request.user != author and not following:
+        follow = Follow(user=request.user, author=author)
+        follow.save
+
+
+@login_required
+def profile_unfollow(request, username):
+    # Дизлайк, отписка
+    ...
